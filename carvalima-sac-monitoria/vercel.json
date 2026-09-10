@@ -1,0 +1,4 @@
+{
+  "buildCommand": "node fix-pdf.cjs && npm run build",
+  "framework": "vite"
+}
