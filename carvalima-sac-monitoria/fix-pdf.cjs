@@ -4,72 +4,51 @@ const path = require('path');
 const file = path.join(__dirname, 'src', 'App.jsx');
 let s = fs.readFileSync(file, 'utf8');
 
+// Atualiza a correção anterior (paisagem) para A4 retrato.
 if (s.includes('PDF A4 landscape fix v2')) {
-  console.log('PDF A4: correção já aplicada.');
+  s = s.replace(
+    "/* PDF A4 landscape fix v2: largura útil compatível com A4 horizontal. */\n      container.style.width = '281mm';\n      container.style.maxWidth = '281mm';",
+    "/* PDF A4 portrait fix v3: largura útil compatível com A4 vertical. */\n      container.style.width = '194mm';\n      container.style.maxWidth = '194mm';"
+  );
+
+  s = s.replace("@page { size: A4 landscape; margin: 8mm; }", "@page { size: A4 portrait; margin: 8mm; }");
+  s = s.replace(".pdf-report { width: 281mm; max-width: 281mm;", ".pdf-report { width: 194mm; max-width: 194mm;");
+  s = s.replace("<div class=\"pdf-report\" style=\"width: 281mm; max-width: 281mm;", "<div class=\"pdf-report\" style=\"width: 194mm; max-width: 194mm;");
+  s = s.replace("clonedReport.style.width = '281mm';", "clonedReport.style.width = '194mm';");
+  s = s.replace("clonedReport.style.maxWidth = '281mm';", "clonedReport.style.maxWidth = '194mm';");
+  s = s.replace("windowWidth: 1062,\n          width: 1062,", "windowWidth: 733,\n          width: 733,");
+
+  s = s.replace("format: 'a4',\n        orientation: 'landscape'", "format: 'a4',\n        orientation: 'portrait'");
+
+  // Remove the old landscape marker so this script remains idempotent.
+  s = s.replace('PDF A4 landscape fix v2', 'PDF A4 portrait fix v3');
+
+  fs.writeFileSync(file, s, 'utf8');
+  console.log('PDF A4: alterado de paisagem para retrato com sucesso.');
   process.exit(0);
 }
 
-const widthOld = "      container.style.width = '1120px';";
-const widthNew = `      /* PDF A4 landscape fix v2: largura útil compatível com A4 horizontal. */
-      container.style.width = '281mm';
-      container.style.maxWidth = '281mm';
-      container.style.margin = '0';
-      container.style.position = 'relative';
-      container.style.left = '0';`;
+// Caso a correção anterior ainda não esteja no App.jsx, aplica uma correção mínima
+// diretamente sobre a configuração original do PDF.
+if (s.includes("orientation: 'landscape'")) {
+  s = s.replace("orientation: 'landscape'", "orientation: 'portrait'");
+}
 
-if (!s.includes(widthOld)) throw new Error('Largura original do PDF não encontrada.');
-s = s.replace(widthOld, widthNew);
+if (s.includes("container.style.width = '1120px';")) {
+  s = s.replace(
+    "container.style.width = '1120px';",
+    "/* PDF A4 portrait fix v3: largura útil compatível com A4 vertical. */\n      container.style.width = '194mm';\n      container.style.maxWidth = '194mm';"
+  );
+}
 
-const cssOld = `          * { box-sizing: border-box; }
-          .pdf-section, .pdf-kpi, .pdf-monitoria { page-break-inside: avoid; break-inside: avoid; }
-          h1, h2, h3, p { page-break-after: avoid; }`;
-const cssNew = `          * { box-sizing: border-box; }
-          @page { size: A4 landscape; margin: 8mm; }
-          html, body { margin: 0 !important; padding: 0 !important; }
-          .pdf-report { width: 281mm; max-width: 281mm; margin: 0; padding: 0; overflow: visible; }
-          .pdf-section, .pdf-kpi, .pdf-monitoria { page-break-inside: avoid; break-inside: avoid; }
-          h1, h2, h3, p { page-break-after: avoid; }
-          .pdf-monitoria * { max-width: 100%; }
-          .pdf-meta-row { display: flex; flex-wrap: wrap; gap: 10px 15px; }`;
-if (!s.includes(cssOld)) throw new Error('CSS original do PDF não encontrado.');
-s = s.replace(cssOld, cssNew);
+if (s.includes('windowWidth: 1120')) {
+  s = s.replace('windowWidth: 1120', 'windowWidth: 733,\n          width: 733');
+}
 
-const marker = '<!-- Cabeçalho Institucional -->';
-const replacement = `<div class="pdf-report" style="width: 281mm; max-width: 281mm; margin: 0; padding: 0;">
-        <!-- Cabeçalho Institucional -->`;
-if (!s.includes(marker)) throw new Error('Cabeçalho do PDF não encontrado.');
-s = s.replace(marker, replacement);
+if (s.includes('PDF A4 portrait fix v3') || s.includes("orientation: 'portrait'")) {
+  fs.writeFileSync(file, s, 'utf8');
+  console.log('PDF A4: configuração em retrato aplicada.');
+  process.exit(0);
+}
 
-const metaOld = `            <div style="display: flex; gap: 15px; font-size: 10px; margin-bottom: 6px;">`;
-const metaNew = `            <div class="pdf-meta-row" style="display: flex; flex-wrap: wrap; gap: 10px 15px; font-size: 10px; margin-bottom: 6px;">`;
-if (!s.includes(metaOld)) throw new Error('Metadados do PDF não encontrados.');
-s = s.replace(metaOld, metaNew);
-
-const footerOld = `        <div style="margin-top: 30px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-          Carvalima Transportes — Sistema Integrado de Gestão de Qualidade V2 • Movidos pela confiança
-        </div>
-      \`;`;
-const footerNew = `        <div style="margin-top: 30px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-          Carvalima Transportes — Sistema Integrado de Gestão de Qualidade V2 • Movidos pela confiança
-        </div>
-        </div>
-      \`;`;
-if (!s.includes(footerOld)) throw new Error('Rodapé do PDF não encontrado.');
-s = s.replace(footerOld, footerNew);
-
-const canvasOld = '          windowWidth: 1120';
-const canvasNew = `          windowWidth: 1062,
-          width: 1062,
-          onclone: (clonedDoc) => {
-            const clonedReport = clonedDoc.querySelector('.pdf-report');
-            if (clonedReport) {
-              clonedReport.style.width = '281mm';
-              clonedReport.style.maxWidth = '281mm';
-              clonedReport.style.margin = '0';
-            }
-          }`;
-if (!s.includes(canvasOld)) throw new Error('Configuração html2canvas original não encontrada.');
-s = s.replace(canvasOld, canvasNew);
-
-fs.writeFileSync(file, s, 'utf8');
-console.log('PDF A4: correção aplicada com sucesso.');
+throw new Error('Não foi possível localizar a configuração da exportação PDF.');
