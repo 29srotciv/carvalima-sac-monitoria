@@ -1,0 +1,7 @@
+{
+  "name": "carvalima-sac-monitoria-root",
+  "private": true,
+  "scripts": {
+    "build": "cd carvalima-sac-monitoria && node fix-pdf.cjs && npm install && npm run build"
+  }
+}
