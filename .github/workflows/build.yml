@@ -19,9 +19,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: carvalima-sac-monitoria/package-lock.json
       - name: Install dependencies
         run: npm install
-      - name: Run build
+      - name: Run root build
         run: cd .. && npm run build
