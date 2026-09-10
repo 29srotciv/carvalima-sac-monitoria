@@ -18,7 +18,7 @@ const actionPlanPriority = (m) => {
   if (actionPlanState(m) === 'Concluído') return 'Concluído';
   if (!actionPlanDate(m)) return 'Sem prazo';
   const today = new Date(); today.setHours(0,0,0,0);
-  const due = new Date(`${actionPlanDate(m)}T00:00:00`);
+  const due = new Date(\`${actionPlanDate(m)}T00:00:00\`);
   if (!Number.isNaN(due.getTime()) && due < today) return 'Atrasado';
   if (!Number.isNaN(due.getTime()) && Math.ceil((due - today) / 86400000) <= 3) return 'Próximo do prazo';
   return 'No prazo';
@@ -26,7 +26,7 @@ const actionPlanPriority = (m) => {
 const actionPlanDays = (m) => {
   if (!actionPlanDate(m)) return null;
   const today = new Date(); today.setHours(0,0,0,0);
-  const due = new Date(`${actionPlanDate(m)}T00:00:00`);
+  const due = new Date(\`${actionPlanDate(m)}T00:00:00\`);
   if (Number.isNaN(due.getTime())) return null;
   return Math.ceil((due - today) / 86400000);
 };
@@ -45,11 +45,23 @@ if (!s.includes('const actionPlans = useMemo')) {
 }
 
 const panelNeedle = '<section className="grid grid-cols-1 xl:grid-cols-2 gap-5"><Panel title="Ranking de colaboradores"';
-const actionSection = `<section className="rounded-2xl border p-5 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4"><div><span className="text-[9px] uppercase font-black tracking-wider text-slate-400">Gestão de melhoria</span><h2 className="text-lg font-black mt-1">Planos de ação</h2><p className="text-[10px] text-slate-400">Acompanhe pendências, prazos e conclusão das ações definidas nas monitorias.</p></div><div className="flex gap-2"><span className="px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 text-[10px] font-black">{actionPlans.length} pendentes</span></div></div>{actionPlans.length ? <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">{actionPlans.map(({ monitoria: m, prioridade, dias }) => <div key={m.id} className="rounded-xl border border-slate-100 dark:border-[#24313B] p-4"><div className="flex items-start gap-3"><div className=\`w-9 h-9 rounded-xl grid place-items-center text-[9px] font-black \${prioridade === 'Atrasado' ? 'bg-rose-500/10 text-rose-500' : prioridade === 'Próximo do prazo' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}\`}>{prioridade === 'Atrasado' ? '!' : '→'}</div><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><b className="text-xs truncate">{m.agente || 'Sem colaborador'}</b><span className="text-[8px] text-slate-400">{m.id}</span></div><p className="text-[10px] mt-2 leading-relaxed">{m.planoAcao}</p><div className="flex flex-wrap gap-2 mt-3"><span className=\`px-2 py-1 rounded-lg text-[8px] font-black \${prioridade === 'Atrasado' ? 'bg-rose-500/10 text-rose-500' : prioridade === 'Próximo do prazo' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}\`}>{prioridade}</span>{m.prazoPlano && <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">Prazo: {new Date(`${m.prazoPlano}T00:00:00`).toLocaleDateString('pt-BR')}</span>}{dias !== null && <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">{dias < 0 ? `${Math.abs(dias)} dia(s) em atraso` : dias === 0 ? 'Vence hoje' : `${dias} dia(s)`}</span>}</div></div><button onClick={() => onUpdateMonitoria?.({ ...m, statusPlano: 'Concluído', updated_at: new Date().toISOString() })} className="shrink-0 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 text-[9px] font-black">Concluir</button></div></div>)}</div> : <Empty text="Nenhum plano de ação pendente na visão atual."/>}</section>`;
+const actionSection = `<section className="rounded-2xl border p-5 shadow-sm"><div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4"><div><span className="text-[9px] uppercase font-black tracking-wider text-slate-400">Gestão de melhoria</span><h2 className="text-lg font-black mt-1">Planos de ação</h2><p className="text-[10px] text-slate-400">Acompanhe pendências, prazos e conclusão das ações definidas nas monitorias.</p></div><div className="flex gap-2"><span className="px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 text-[10px] font-black">__COUNT__ pendentes</span></div></div>{__HAS__ ? <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">__ITEMS__</div> : <Empty text="Nenhum plano de ação pendente na visão atual."/>}</section>`;
+const actionItems = `<div key={m.id} className="rounded-xl border border-slate-100 dark:border-[#24313B] p-4"><div className="flex items-start gap-3"><div className="w-9 h-9 rounded-xl grid place-items-center text-[9px] font-black bg-amber-500/10 text-amber-600">!</div><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><b className="text-xs truncate">__AGENTE__</b><span className="text-[8px] text-slate-400">__ID__</span></div><p className="text-[10px] mt-2 leading-relaxed">__PLANO__</p><div className="flex flex-wrap gap-2 mt-3"><span className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[8px] font-black">__PRIORIDADE__</span>__PRAZO__</div></div><button onClick={() => onUpdateMonitoria?.({ ...m, statusPlano: 'Concluído', updated_at: new Date().toISOString() })} className="shrink-0 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 text-[9px] font-black">Concluir</button></div></div>`;
+const itemExpression = `{actionPlans.map(({ monitoria: m, prioridade, dias }) => ${actionItems})}`
+  .replace('__AGENTE__', '{m.agente || \'Sem colaborador\'}')
+  .replace('__ID__', '{m.id}')
+  .replace('__PLANO__', '{m.planoAcao}')
+  .replace('__PRIORIDADE__', '{prioridade}')
+  .replace('__PRAZO__', `{m.prazoPlano ? <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">Prazo: {new Date(\`${m.prazoPlano}T00:00:00\`).toLocaleDateString('pt-BR')}</span> : null}{dias !== null ? <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">{dias < 0 ? Math.abs(dias) + ' dia(s) em atraso' : dias === 0 ? 'Vence hoje' : dias + ' dia(s)'}</span> : null}`);
+const renderedActionSection = actionSection
+  .replace('__COUNT__', '{actionPlans.length}')
+  .replace('__HAS__', 'actionPlans.length')
+  .replace('__ITEMS__', itemExpression);
+
 if (!s.includes('Gestão de melhoria</span><h2 className="text-lg font-black mt-1">Planos de ação')) {
   const pos = s.indexOf(panelNeedle);
   if (pos < 0) throw new Error('Âncora do ranking não encontrada para o painel de planos.');
-  s = s.slice(0, pos) + actionSection + s.slice(pos);
+  s = s.slice(0, pos) + renderedActionSection + s.slice(pos);
 }
 
 fs.writeFileSync(file, s, 'utf8');
