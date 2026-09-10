@@ -18,7 +18,7 @@ const actionPlanPriority = (m) => {
   if (actionPlanState(m) === 'Concluído') return 'Concluído';
   if (!actionPlanDate(m)) return 'Sem prazo';
   const today = new Date(); today.setHours(0,0,0,0);
-  const due = new Date(\`${actionPlanDate(m)}T00:00:00\`);
+  const due = new Date(actionPlanDate(m) + 'T00:00:00');
   if (!Number.isNaN(due.getTime()) && due < today) return 'Atrasado';
   if (!Number.isNaN(due.getTime()) && Math.ceil((due - today) / 86400000) <= 3) return 'Próximo do prazo';
   return 'No prazo';
@@ -26,7 +26,7 @@ const actionPlanPriority = (m) => {
 const actionPlanDays = (m) => {
   if (!actionPlanDate(m)) return null;
   const today = new Date(); today.setHours(0,0,0,0);
-  const due = new Date(\`${actionPlanDate(m)}T00:00:00\`);
+  const due = new Date(actionPlanDate(m) + 'T00:00:00');
   if (Number.isNaN(due.getTime())) return null;
   return Math.ceil((due - today) / 86400000);
 };
@@ -52,7 +52,7 @@ const itemExpression = `{actionPlans.map(({ monitoria: m, prioridade, dias }) =>
   .replace('__ID__', '{m.id}')
   .replace('__PLANO__', '{m.planoAcao}')
   .replace('__PRIORIDADE__', '{prioridade}')
-  .replace('__PRAZO__', `{m.prazoPlano ? <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">Prazo: {new Date(\`${m.prazoPlano}T00:00:00\`).toLocaleDateString('pt-BR')}</span> : null}{dias !== null ? <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">{dias < 0 ? Math.abs(dias) + ' dia(s) em atraso' : dias === 0 ? 'Vence hoje' : dias + ' dia(s)'}</span> : null}`);
+  .replace('__PRAZO__', `{m.prazoPlano ? <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">Prazo: {new Date((m.prazoPlano || '') + 'T00:00:00').toLocaleDateString('pt-BR')}</span> : null}{dias !== null ? <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[8px] font-bold">{dias < 0 ? Math.abs(dias) + ' dia(s) em atraso' : dias === 0 ? 'Vence hoje' : dias + ' dia(s)'}</span> : null}`);
 const renderedActionSection = actionSection
   .replace('__COUNT__', '{actionPlans.length}')
   .replace('__HAS__', 'actionPlans.length')
