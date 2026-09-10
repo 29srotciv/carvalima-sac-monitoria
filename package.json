@@ -2,6 +2,6 @@
   "name": "carvalima-sac-monitoria-root",
   "private": true,
   "scripts": {
-    "build": "cd carvalima-sac-monitoria && node fix-pdf.cjs && node fix-features.cjs && npm install && npm run build"
+    "build": "cd carvalima-sac-monitoria && node fix-pdf.cjs && node fix-dashboard-export.cjs && node fix-features.cjs && npm install && npm run build"
   }
 }
