@@ -3,6 +3,40 @@ const KEY = 'carvalima_qa_drafts';
 const oldKey = 'carvalima_qa_active_draft';
 const score = (responses, criteria) => criteria.length ? Number((Object.values(responses).filter(x => x?.atendeu === true).length / criteria.length * 10).toFixed(1)) : 0;
 const status = n => n >= 9 ? 'Conforme' : n >= 7 ? 'Em Atenção' : 'Crítico';
+const norm = (v = '') => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const extractSummaryCriteria = (text, criteria) => {
+  const raw = String(text || '');
+  if (!raw) return {};
+  const lines = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const negativeStart = lines.findIndex(x => /oportunidades?\s+de\s+melhoria|pontos?\s+de\s+aten[cç][aã]o|falhas?|n[aã]o\s+conforme/i.test(x));
+  const positiveStart = lines.findIndex(x => /pontos?\s+positivos?|pontos?\s+fortes?/i.test(x));
+  const actionStart = lines.findIndex((x, i) => i > Math.max(negativeStart, positiveStart) && /plano\s+de\s+a[cç][aã]o|plano\s+de\s+ação\s+sugerido/i.test(x));
+  const negativeLines = negativeStart >= 0 ? lines.slice(negativeStart + 1, actionStart >= 0 ? actionStart : lines.length) : [];
+  const positiveLines = positiveStart >= 0 ? lines.slice(positiveStart + 1, negativeStart >= 0 ? negativeStart : (actionStart >= 0 ? actionStart : lines.length)) : [];
+  const out = {};
+  const markLines = (source, atendeu) => source.filter(x => /^[-•*]\s*|^\d+[.)]\s*/.test(x)).forEach(line => {
+    const clean = line.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').replace(/^\s*(?:✅|⚠️|❌)\s*/, '').trim();
+    criteria.forEach(c => {
+      const title = norm(c.titulo);
+      const normalizedLine = norm(clean);
+      if (title && (normalizedLine === title || normalizedLine.startsWith(`${title} (`) || normalizedLine.startsWith(`${title}:`) || normalizedLine.includes(title))) {
+        const evidence = atendeu === false ? (clean.match(/\((.*?)\)/)?.[1] || '') : '';
+        out[c.id] = { atendeu, evidencia: evidence, titulo: c.titulo };
+      }
+    });
+  });
+  markLines(negativeLines, false); markLines(positiveLines, true);
+  if (!Object.keys(out).length && /excelente atendimento/i.test(raw)) criteria.forEach(c => { out[c.id] = { atendeu: true, evidencia: '', titulo: c.titulo }; });
+  return out;
+};
+const buildCriteriaForEdit = (monitoria, fallbackCriteria) => {
+  const savedCriteria = Array.isArray(monitoria?.criterios) && monitoria.criterios.length ? monitoria.criterios : [];
+  const detailTitles = Object.values(monitoria?.detalhes || {}).map(r => r?.titulo).filter(Boolean);
+  const base = savedCriteria.length ? savedCriteria : fallbackCriteria;
+  const byTitle = new Map(base.map(c => [norm(c.titulo), c]));
+  const recovered = detailTitles.filter(t => !byTitle.has(norm(t))).map((t, i) => ({ id: `legacy-${i}`, titulo: t, desc: 'Critério recuperado do registro da monitoria.' }));
+  return [...base, ...recovered];
+};
 
 export default function ModernNovaMonitoriaView({ unidades = [], monitorias = [], colaboradores = [], onSave, onCancel, monitoriaEdit, rascunhoEdit, onDraftSaved, darkMode = false, departamentos = [], canais = [], criteriosGenericos = [], criteriosPorDepartamento = {}, agentesComercial = [] }) {
   const [etapa, setEtapa] = useState(1), [unidade, setUnidade] = useState(''), [unidadeManual, setUnidadeManual] = useState(''), [departamento, setDepartamento] = useState(''), [agente, setAgente] = useState(''), [canal, setCanal] = useState(canais[0] || 'Telefone'), [protocolo, setProtocolo] = useState(''), [data, setData] = useState(''), [hora, setHora] = useState(''), [cliente, setCliente] = useState(''), [respostas, setRespostas] = useState({}), [criterios, setCriterios] = useState(criteriosGenericos), [feedback, setFeedback] = useState(''), [planoAcao, setPlanoAcao] = useState(''), [prazoPlano, setPrazoPlano] = useState(''), [statusPlano, setStatusPlano] = useState('Pendente'), [saved, setSaved] = useState(null), [ready, setReady] = useState(false);
@@ -10,13 +44,20 @@ export default function ModernNovaMonitoriaView({ unidades = [], monitorias = []
 
   useEffect(() => {
     if (initialized.current) return; initialized.current = true;
+    const source = rascunhoEdit || monitoriaEdit;
     if (rascunhoEdit && !monitoriaEdit) {
       id.current = rascunhoEdit.id; setEtapa(rascunhoEdit.etapa || 1); setUnidade(rascunhoEdit.unidadeSel || ''); setUnidadeManual(rascunhoEdit.unidadeManual || ''); setDepartamento(rascunhoEdit.departamento || ''); setAgente(rascunhoEdit.agente || ''); setCanal(rascunhoEdit.canal || 'Telefone'); setProtocolo(rascunhoEdit.protocolo || ''); setData(rascunhoEdit.dataAtendimento || ''); setHora(rascunhoEdit.horario || ''); setCliente(rascunhoEdit.cliente || ''); setFeedback(rascunhoEdit.feedback || ''); setPlanoAcao(rascunhoEdit.planoAcao || ''); setPrazoPlano(rascunhoEdit.prazoPlano || ''); setStatusPlano(rascunhoEdit.statusPlano || 'Pendente');
       const cs = rascunhoEdit.criterios?.length ? rascunhoEdit.criterios : (criteriosPorDepartamento[rascunhoEdit.departamento] || criteriosGenericos); setCriterios(cs); const rs = { ...(rascunhoEdit.respostas || {}) }; cs.forEach(c => { if (!rs[c.id]) rs[c.id] = { atendeu: null, evidencia: '' }; }); setRespostas(rs);
     } else if (monitoriaEdit) {
       if (unidades.includes(monitoriaEdit.unidade)) setUnidade(monitoriaEdit.unidade); else { setUnidade('OUTRA'); setUnidadeManual(monitoriaEdit.unidade || ''); }
       setDepartamento(monitoriaEdit.departamento || ''); setAgente(monitoriaEdit.agente || ''); setCanal(monitoriaEdit.canal || 'Telefone'); setProtocolo(monitoriaEdit.protocolo || ''); setData(monitoriaEdit.dataAtendimento || ''); setHora(monitoriaEdit.horario || ''); setCliente(monitoriaEdit.cliente || ''); setFeedback(monitoriaEdit.feedback || ''); setPlanoAcao(monitoriaEdit.planoAcao || ''); setPrazoPlano(monitoriaEdit.prazoPlano || ''); setStatusPlano(monitoriaEdit.statusPlano || 'Pendente');
-      const cs = criteriosPorDepartamento[monitoriaEdit.departamento] || criteriosGenericos; setCriterios(cs); const rs = {}; cs.forEach(c => rs[c.id] = monitoriaEdit.detalhes?.[c.id] || { atendeu: null, evidencia: '' }); setRespostas(rs);
+      const fallback = criteriosPorDepartamento[monitoriaEdit.departamento] || criteriosGenericos;
+      const cs = buildCriteriaForEdit(monitoriaEdit, fallback); setCriterios(cs);
+      const rs = {}; const detalhes = monitoriaEdit.detalhes || {};
+      cs.forEach(c => { const direct = detalhes[c.id]; const byTitle = Object.values(detalhes).find(r => r?.titulo && norm(r.titulo) === norm(c.titulo)); rs[c.id] = direct || byTitle || { atendeu: null, evidencia: '' }; });
+      const summary = extractSummaryCriteria(monitoriaEdit.feedback || monitoriaEdit.resumo || monitoriaEdit.resumoCriteriosTexto, cs);
+      Object.entries(summary).forEach(([id, value]) => { if (rs[id]?.atendeu === null || rs[id]?.atendeu === undefined) rs[id] = value; });
+      setRespostas(rs);
     } else {
       setData(new Date().toISOString().slice(0, 10)); const rs = {}; criteriosGenericos.forEach(c => rs[c.id] = { atendeu: null, evidencia: '' }); setRespostas(rs); setCriterios(criteriosGenericos);
     }
@@ -34,7 +75,14 @@ export default function ModernNovaMonitoriaView({ unidades = [], monitorias = []
   const nota = score(respostas, criterios); const situacao = status(nota); const p1 = departamento && unidade && agente && data && cliente && canal; const p2 = criterios.length > 0 && respondidos === criterios.length;
   const sugeridos = useMemo(() => departamento === 'Filiais - Comercial' ? agentesComercial : Array.from(new Set([...monitorias.filter(m => m.departamento === departamento && m.agente).map(m => m.agente), ...(colaboradores || []).filter(c => c.departamento === departamento).map(c => c.nome)])).sort(), [departamento, monitorias, colaboradores, agentesComercial]);
   const gerarFeedback = () => { const pos = [], neg = []; criterios.forEach(c => { if (respostas[c.id]?.atendeu === true) pos.push(c.titulo); if (respostas[c.id]?.atendeu === false) neg.push(c.titulo); }); let text = `Olá ${agente || 'Colaborador'},\n\nFoi realizada uma monitoria do seu atendimento de ${data}, pelo canal ${canal}. A nota final foi ${nota.toFixed(1)}/10 — ${situacao}.\n\n`; if (pos.length) text += `Pontos positivos:\n- ${pos.join('\n- ')}\n\n`; if (neg.length) { text += `Oportunidades de melhoria:\n- ${neg.join('\n- ')}\n\n`; text += 'Plano de ação sugerido: reforçar os critérios apontados nas próximas interações e revisar o procedimento correspondente.'; setPlanoAcao(`Reforçar: ${neg.join(', ')}. Realizar acompanhamento em nova monitoria.`); } else text += 'Excelente atendimento! Todos os critérios avaliados foram atendidos.'; setFeedback(text); };
-  const salvar = () => { const detalhes = {}; criterios.forEach(c => { detalhes[c.id] = { ...(respostas[c.id] || {}), titulo: c.titulo }; }); const final = { id: monitoriaEdit?.id || `MON-${Date.now()}`, data: new Date().toLocaleDateString('pt-BR'), avaliador: 'Victor Silva - Analista SAC', agente: agente.trim().toUpperCase(), unidade: unidade === 'OUTRA' ? unidadeManual.toUpperCase() : unidade, departamento: departamento || departamentos[0], canal, protocolo, dataAtendimento: data, horario: hora, cliente, nota, status: situacao, detalhes, criterios, feedback, planoAcao, prazoPlano, statusPlano, feedbackSupervisor: monitoriaEdit?.feedbackSupervisor || '', statusFeedback: monitoriaEdit?.statusFeedback || 'Pendente', updated_at: new Date().toISOString(), rascunhoId: rascunhoEdit?.id || null }; let arr = []; try { arr = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch {} localStorage.setItem(KEY, JSON.stringify((Array.isArray(arr) ? arr : []).filter(d => d.id !== id.current))); localStorage.removeItem(oldKey); onSave(final); };
+  const salvar = () => {
+    const detalhes = {};
+    const resumoCriterios = criterios.map(c => ({ id: c.id, titulo: c.titulo, desc: c.desc || '', atendeu: respostas[c.id]?.atendeu ?? null, evidencia: respostas[c.id]?.evidencia || '' }));
+    criterios.forEach(c => { detalhes[c.id] = { ...(respostas[c.id] || {}), titulo: c.titulo }; });
+    const final = { id: monitoriaEdit?.id || `MON-${Date.now()}`, data: new Date().toLocaleDateString('pt-BR'), avaliador: 'Victor Silva - Analista SAC', agente: agente.trim().toUpperCase(), unidade: unidade === 'OUTRA' ? unidadeManual.toUpperCase() : unidade, departamento: departamento || departamentos[0], canal, protocolo, dataAtendimento: data, horario: hora, cliente, nota, status: situacao, detalhes, respostas, criterios, resumoCriterios, feedback, planoAcao, prazoPlano, statusPlano, feedbackSupervisor: monitoriaEdit?.feedbackSupervisor || '', statusFeedback: monitoriaEdit?.statusFeedback || 'Pendente', updated_at: new Date().toISOString(), rascunhoId: rascunhoEdit?.id || null };
+    let arr = []; try { arr = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch {}
+    localStorage.setItem(KEY, JSON.stringify((Array.isArray(arr) ? arr : []).filter(d => d.id !== id.current))); localStorage.removeItem(oldKey); onSave(final);
+  };
   const sair = () => { if (!monitoriaEdit) persistDraft(); onCancel?.(); };
   const f = `w-full px-3 py-2.5 rounded-xl border text-xs outline-none ${darkMode ? 'bg-[#0B1117] border-[#24313B] text-white' : 'bg-slate-50 border-slate-200'}`;
 
