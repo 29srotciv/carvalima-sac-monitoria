@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 export default function SupervisorResponseView() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('supervisor_token') || '';
-  const [config, setConfig] = useState(null);
+  const [apiUrl, setApiUrl] = useState('');
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -14,12 +14,10 @@ export default function SupervisorResponseView() {
   const [erro, setErro] = useState('');
 
   useEffect(() => {
-    let c = {};
-    try { c = JSON.parse(localStorage.getItem('carvalima_qa_settings')) || {}; } catch {}
-    setConfig(c);
-    if (!token) { setErro('Link de retorno inválido.'); setLoading(false); return; }
-    if (!c.gasUrl || !c.gasToken) { setErro('O canal de comunicação ainda não está configurado.'); setLoading(false); return; }
-    fetch(c.gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'getSupervisorRequest', responseToken: token, tokenSeguranca: c.gasToken }) })
+    const api = params.get('gas') || '';
+    setApiUrl(api);
+    if (!token || !api) { setErro('Link de retorno inválido ou incompleto.'); setLoading(false); return; }
+    fetch(api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'getSupervisorRequest', responseToken: token }) })
       .then((r) => r.json()).then((r) => { if (!r.success) throw new Error(r.error || 'Solicitação não encontrada.'); setDados(r.data); if (r.data?.respondido) setSucesso(true); })
       .catch((e) => setErro(e.message)).finally(() => setLoading(false));
   }, [token]);
@@ -28,7 +26,7 @@ export default function SupervisorResponseView() {
     if (!mensagem.trim()) { setErro('Informe o retorno do supervisor.'); return; }
     setEnviando(true); setErro('');
     try {
-      const r = await fetch(config.gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'submitSupervisorFeedback', responseToken: token, tokenSeguranca: config.gasToken, decisao, mensagem, proximoPasso }) }).then((x) => x.json());
+      const r = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'submitSupervisorFeedback', responseToken: token, decisao, mensagem, proximoPasso }) }).then((x) => x.json());
       if (!r.success) throw new Error(r.error || 'Não foi possível registrar o retorno.');
       setSucesso(true);
     } catch (e) { setErro(e.message); } finally { setEnviando(false); }
