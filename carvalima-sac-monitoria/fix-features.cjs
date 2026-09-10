@@ -11,4 +11,5 @@ s=s.replace("{currentTab === 'nova' && <NovaMonitoriaView unidades={unidades} mo
 s=s.replace("{currentTab === 'auditoria' && <AuditoriaView historico={historicoAuditoria} darkMode={darkMode} />}","{currentTab === 'feedback' && <SupervisorFeedbackView monitorias={monitorias} darkMode={darkMode} onUpdateMonitoria={handleUpdateMonitoria} />}\n        {currentTab === 'auditoria' && <AuditoriaView historico={historicoAuditoria} darkMode={darkMode} />}");
 s=s.replace("<aside className={`flex flex-col border-r transition-all duration-300 z-30","<aside className={`professional-sidebar flex flex-col border-r transition-all duration-300 z-30");
 s=s.replace("<header className={`h-16 px-6 border-b","<header className={`h-[72px] px-6 md:px-8 border-b");
+s += `\n/* ${MARK} */\n`;
 fs.writeFileSync(file,s,'utf8');console.log('UX/rascunhos V3 aplicados.');
