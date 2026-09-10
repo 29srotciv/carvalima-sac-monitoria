@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node fix-pdf.cjs && node fix-dashboard-export.cjs && node fix-action-plan.cjs && node fix-features.cjs && node fix-supervisor-reports.cjs && node fix-bulk-action-plan.cjs && node fix-supervisor-communication.cjs",
     "build": "vite build",
     "preview": "vite preview"
   },
