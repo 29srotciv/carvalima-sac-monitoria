@@ -3,52 +3,96 @@ const path = require('path');
 
 const file = path.join(__dirname, 'src', 'App.jsx');
 let s = fs.readFileSync(file, 'utf8');
+const MARKER = 'PDF A4 portrait isolated fix v3';
 
-// Atualiza a correção anterior (paisagem) para A4 retrato.
-if (s.includes('PDF A4 landscape fix v2')) {
-  s = s.replace(
-    "/* PDF A4 landscape fix v2: largura útil compatível com A4 horizontal. */\n      container.style.width = '281mm';\n      container.style.maxWidth = '281mm';",
-    "/* PDF A4 portrait fix v3: largura útil compatível com A4 vertical. */\n      container.style.width = '194mm';\n      container.style.maxWidth = '194mm';"
-  );
+const start = s.indexOf('const handleExportPDF = async');
+const end = s.indexOf('  return (', start);
+if (start < 0 || end < 0) throw new Error('Função handleExportPDF não encontrada.');
 
-  s = s.replace("@page { size: A4 landscape; margin: 8mm; }", "@page { size: A4 portrait; margin: 8mm; }");
-  s = s.replace(".pdf-report { width: 281mm; max-width: 281mm;", ".pdf-report { width: 194mm; max-width: 194mm;");
-  s = s.replace("<div class=\"pdf-report\" style=\"width: 281mm; max-width: 281mm;", "<div class=\"pdf-report\" style=\"width: 194mm; max-width: 194mm;");
-  s = s.replace("clonedReport.style.width = '281mm';", "clonedReport.style.width = '194mm';");
-  s = s.replace("clonedReport.style.maxWidth = '281mm';", "clonedReport.style.maxWidth = '194mm';");
-  s = s.replace("windowWidth: 1062,\n          width: 1062,", "windowWidth: 733,\n          width: 733,");
-
-  s = s.replace("format: 'a4',\n        orientation: 'landscape'", "format: 'a4',\n        orientation: 'portrait'");
-
-  // Remove the old landscape marker so this script remains idempotent.
-  s = s.replace('PDF A4 landscape fix v2', 'PDF A4 portrait fix v3');
-
-  fs.writeFileSync(file, s, 'utf8');
-  console.log('PDF A4: alterado de paisagem para retrato com sucesso.');
+let pdf = s.slice(start, end);
+if (pdf.includes(MARKER)) {
+  console.log('PDF A4 retrato: correção já aplicada.');
   process.exit(0);
 }
 
-// Caso a correção anterior ainda não esteja no App.jsx, aplica uma correção mínima
-// diretamente sobre a configuração original do PDF.
-if (s.includes("orientation: 'landscape'")) {
-  s = s.replace("orientation: 'landscape'", "orientation: 'portrait'");
+pdf = pdf.replace("      container.style.padding = '24px';", "      container.style.padding = '0';");
+pdf = pdf.replace(/      container\.style\.width = '1120px';/,
+`      /* ${MARKER}: renderização isolada em largura fixa, sem depender de mm no HTML. */
+      container.style.width = '794px';
+      container.style.maxWidth = '794px';
+      container.style.margin = '0';
+      container.style.position = 'absolute';
+      container.style.left = '-10000px';
+      container.style.top = '0';`);
+pdf = pdf.replace(/      \/\* PDF A4 landscape fix v2:[\s\S]*?      container\.style\.left = '0';/,
+`      /* ${MARKER}: renderização isolada em largura fixa, sem depender de mm no HTML. */
+      container.style.width = '794px';
+      container.style.maxWidth = '794px';
+      container.style.margin = '0';
+      container.style.position = 'absolute';
+      container.style.left = '-10000px';
+      container.style.top = '0';`);
+
+pdf = pdf.replace(/          \* \{ box-sizing: border-box; \}\n          \.pdf-section, \.pdf-kpi, \.pdf-monitoria \{ page-break-inside: avoid; break-inside: avoid; \}\n          h1, h2, h3, p \{ page-break-after: avoid; \}/,
+`          * { box-sizing: border-box; }
+          @page { size: A4 portrait; margin: 0; }
+          html, body { margin: 0 !important; padding: 0 !important; }
+          .pdf-report { width: 794px; max-width: 794px; margin: 0; padding: 24px; overflow: visible; box-sizing: border-box; }
+          .pdf-page { width: 794px; min-height: 1123px; padding: 30px; margin: 0; box-sizing: border-box; }
+          .pdf-section, .pdf-kpi, .pdf-monitoria { page-break-inside: avoid; break-inside: avoid; }
+          h1, h2, h3, p { page-break-after: avoid; }
+          .pdf-monitoria * { max-width: 100%; }
+          .pdf-monitoria-list { display: block; }
+          .pdf-monitoria-list > .pdf-monitoria { margin-bottom: 12px; }
+          .pdf-meta-row { display: flex; flex-wrap: wrap; gap: 10px 15px; }`);
+
+pdf = pdf.replace(/@page \{ size: A4 landscape; margin: 8mm; \}/g, '@page { size: A4 portrait; margin: 0; }');
+pdf = pdf.replace(/\.pdf-report \{ width: 281mm; max-width: 281mm; margin: 0; padding: 0; overflow: visible; \}/g,
+  '.pdf-report { width: 794px; max-width: 794px; margin: 0; padding: 24px; overflow: visible; box-sizing: border-box; }');
+
+pdf = pdf.replace('<div class="pdf-report" style="width: 281mm; max-width: 281mm; margin: 0; padding: 0;">',
+  '<div class="pdf-report" style="width: 794px; max-width: 794px; margin: 0; padding: 24px; box-sizing: border-box;">');
+if (!pdf.includes('class="pdf-report"')) {
+  pdf = pdf.replace('<!-- Cabeçalho Institucional -->',
+    '<div class="pdf-report" style="width: 794px; max-width: 794px; margin: 0; padding: 24px; box-sizing: border-box;">\n        <!-- Cabeçalho Institucional -->');
 }
 
-if (s.includes("container.style.width = '1120px';")) {
-  s = s.replace(
-    "container.style.width = '1120px';",
-    "/* PDF A4 portrait fix v3: largura útil compatível com A4 vertical. */\n      container.style.width = '194mm';\n      container.style.maxWidth = '194mm';"
-  );
+pdf = pdf.replace(/<div style="display: flex; flex-direction: column; gap: 12px;">/g,
+  '<div class="pdf-monitoria-list">');
+pdf = pdf.replace(/<div style="display: flex; gap: 15px; font-size: 10px; margin-bottom: 6px;">/g,
+  '<div class="pdf-meta-row" style="display: flex; flex-wrap: wrap; gap: 10px 15px; font-size: 10px; margin-bottom: 6px;">');
+
+const footer = `        <div style="margin-top: 30px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">\n          Carvalima Transportes — Sistema Integrado de Gestão de Qualidade V2 • Movidos pela confiança\n        </div>`;
+if (pdf.includes(footer)) {
+  const afterFooter = pdf.indexOf(footer) + footer.length;
+  if (!pdf.slice(afterFooter).includes('</div>')) {
+    pdf = pdf.slice(0, afterFooter) + '\n        </div>' + pdf.slice(afterFooter);
+  }
 }
 
-if (s.includes('windowWidth: 1120')) {
-  s = s.replace('windowWidth: 1120', 'windowWidth: 733,\n          width: 733');
+pdf = pdf.replace(/windowWidth: 1120/g, 'windowWidth: 794');
+pdf = pdf.replace(/windowWidth: 1062/g, 'windowWidth: 794');
+pdf = pdf.replace(/width: 1062/g, 'width: 794');
+if (!pdf.includes('windowWidth: 794,\n          width: 794')) {
+  pdf = pdf.replace(/windowWidth: 794,/, 'windowWidth: 794,\n          width: 794,');
 }
+pdf = pdf.replace(/const clonedContainer = clonedDoc\.querySelector\([\s\S]*?\n          \}/,
+`const clonedReport = clonedDoc.querySelector('.pdf-report');
+            if (clonedReport) {
+              clonedReport.style.width = '794px';
+              clonedReport.style.maxWidth = '794px';
+              clonedReport.style.margin = '0';
+            }
+          }`);
 
-if (s.includes('PDF A4 portrait fix v3') || s.includes("orientation: 'portrait'")) {
-  fs.writeFileSync(file, s, 'utf8');
-  console.log('PDF A4: configuração em retrato aplicada.');
-  process.exit(0);
-}
+pdf = pdf.replace(/margin: \[8, 8, 10, 8\]/g, 'margin: [10, 10, 10, 10]');
+pdf = pdf.replace(/orientation: 'landscape'/g, "orientation: 'portrait'");
 
-throw new Error('Não foi possível localizar a configuração da exportação PDF.');
+if (!pdf.includes(MARKER)) throw new Error('Marcador da nova correção não foi aplicado.');
+if (!pdf.includes("orientation: 'portrait'")) throw new Error('Orientação portrait não foi aplicada.');
+if (!pdf.includes("container.style.width = '794px';")) throw new Error('Largura 794px não foi aplicada.');
+if (!pdf.includes('class="pdf-report"')) throw new Error('Wrapper pdf-report não foi aplicado.');
+
+s = s.slice(0, start) + pdf + s.slice(end);
+fs.writeFileSync(file, s, 'utf8');
+console.log('PDF A4 retrato: correção v3 aplicada com sucesso.');
