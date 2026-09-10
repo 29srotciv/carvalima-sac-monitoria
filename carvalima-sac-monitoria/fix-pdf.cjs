@@ -3,7 +3,7 @@ const path = require('path');
 
 const file = path.join(__dirname, 'src', 'App.jsx');
 let s = fs.readFileSync(file, 'utf8');
-const MARKER = 'PDF A4 portrait isolated fix v3';
+const MARKER = 'PDF A4 portrait isolated fix v4';
 
 const start = s.indexOf('const handleExportPDF = async');
 const end = s.indexOf('  return (', start);
@@ -39,7 +39,8 @@ pdf = pdf.replace(/          \* \{ box-sizing: border-box; \}\n          \.pdf-s
           html, body { margin: 0 !important; padding: 0 !important; }
           .pdf-report { width: 794px; max-width: 794px; margin: 0; padding: 24px; overflow: visible; box-sizing: border-box; }
           .pdf-page { width: 794px; min-height: 1123px; padding: 30px; margin: 0; box-sizing: border-box; }
-          .pdf-section, .pdf-kpi, .pdf-monitoria { page-break-inside: avoid; break-inside: avoid; }
+          .pdf-section, .pdf-kpi { page-break-inside: avoid; break-inside: avoid; }
+          .pdf-monitoria { page-break-inside: auto; break-inside: auto; }
           h1, h2, h3, p { page-break-after: avoid; }
           .pdf-monitoria * { max-width: 100%; }
           .pdf-monitoria-list { display: block; }
@@ -49,6 +50,8 @@ pdf = pdf.replace(/          \* \{ box-sizing: border-box; \}\n          \.pdf-s
 pdf = pdf.replace(/@page \{ size: A4 landscape; margin: 8mm; \}/g, '@page { size: A4 portrait; margin: 0; }');
 pdf = pdf.replace(/\.pdf-report \{ width: 281mm; max-width: 281mm; margin: 0; padding: 0; overflow: visible; \}/g,
   '.pdf-report { width: 794px; max-width: 794px; margin: 0; padding: 24px; overflow: visible; box-sizing: border-box; }');
+pdf = pdf.replace(/\.pdf-section, \.pdf-kpi, \.pdf-monitoria \{ page-break-inside: avoid; break-inside: avoid; \}/g,
+  '.pdf-section, .pdf-kpi { page-break-inside: avoid; break-inside: avoid; }\n          .pdf-monitoria { page-break-inside: auto; break-inside: auto; }');
 
 pdf = pdf.replace('<div class="pdf-report" style="width: 281mm; max-width: 281mm; margin: 0; padding: 0;">',
   '<div class="pdf-report" style="width: 794px; max-width: 794px; margin: 0; padding: 24px; box-sizing: border-box;">');
@@ -62,7 +65,9 @@ pdf = pdf.replace(/<div style="display: flex; flex-direction: column; gap: 12px;
 pdf = pdf.replace(/<div style="display: flex; gap: 15px; font-size: 10px; margin-bottom: 6px;">/g,
   '<div class="pdf-meta-row" style="display: flex; flex-wrap: wrap; gap: 10px 15px; font-size: 10px; margin-bottom: 6px;">');
 
-const footer = `        <div style="margin-top: 30px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">\n          Carvalima Transportes — Sistema Integrado de Gestão de Qualidade V2 • Movidos pela confiança\n        </div>`;
+const footer = `        <div style="margin-top: 30px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+          Carvalima Transportes — Sistema Integrado de Gestão de Qualidade V2 • Movidos pela confiança
+        </div>`;
 if (pdf.includes(footer)) {
   const afterFooter = pdf.indexOf(footer) + footer.length;
   if (!pdf.slice(afterFooter).includes('</div>')) {
@@ -95,4 +100,4 @@ if (!pdf.includes('class="pdf-report"')) throw new Error('Wrapper pdf-report nã
 
 s = s.slice(0, start) + pdf + s.slice(end);
 fs.writeFileSync(file, s, 'utf8');
-console.log('PDF A4 retrato: correção v3 aplicada com sucesso.');
+console.log('PDF A4 retrato: correção v4 aplicada com sucesso.');
