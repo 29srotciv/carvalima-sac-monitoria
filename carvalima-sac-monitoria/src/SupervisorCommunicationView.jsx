@@ -55,11 +55,11 @@ export default function SupervisorCommunicationView({ monitorias = [], superviso
   const enviar = async (m) => {
     const supervisor = responsavel(m), cfg = settings();
     if (!supervisor) throw new Error(`Nenhum supervisor cadastrado para ${m.departamento || 'o departamento'}.`);
-    if (!cfg.gasUrl || !cfg.gasToken) throw new Error('Configure o Google Apps Script em Configurações.');
+    if (!cfg.gmailUrl || !cfg.gmailToken) throw new Error('Configure o Script Gmail em Configurações > Script Gmail.');
     const token = m.supervisorToken || safeToken();
-    const responseUrl = `${window.location.origin}${window.location.pathname}?supervisor_token=${encodeURIComponent(token)}&gas=${encodeURIComponent(cfg.gasUrl)}`;
-    const payload = { action: 'sendSupervisorEmail', tokenSeguranca: cfg.gasToken, responseToken: token, supervisor: { nome: supervisor.nome, email: supervisor.email, departamento: supervisor.departamento }, monitoria: { id: m.id, agente: m.agente, departamento: m.departamento, unidade: m.unidade, dataAtendimento: m.dataAtendimento, nota: m.nota, status: m.status }, pdfBase64: makePdf(m, supervisor), responseUrl, enviadoPor: 'Victor Silva (Analista SAC)' };
-    const result = await fetch(cfg.gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) }).then((r) => r.json());
+    const responseUrl = `${window.location.origin}${window.location.pathname}?supervisor_token=${encodeURIComponent(token)}&gas=${encodeURIComponent(cfg.gmailUrl)}`;
+    const payload = { action: 'sendSupervisorEmail', tokenSeguranca: cfg.gmailToken, responseToken: token, supervisor: { nome: supervisor.nome, email: supervisor.email, departamento: supervisor.departamento }, monitoria: { id: m.id, agente: m.agente, departamento: m.departamento, unidade: m.unidade, dataAtendimento: m.dataAtendimento, nota: m.nota, status: m.status }, pdfBase64: makePdf(m, supervisor), responseUrl, enviadoPor: 'Victor Silva (Analista SAC)' };
+    const result = await fetch(cfg.gmailUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) }).then((r) => r.json());
     if (!result.success) throw new Error(result.error || 'Falha ao enviar o e-mail.');
     await onUpdateMonitoria({ ...m, supervisorNome: supervisor.nome, supervisorEmail: supervisor.email, supervisorDepartamento: supervisor.departamento, supervisorToken: token, supervisorEnvioAt: new Date().toISOString(), supervisorStatus: 'Enviado', supervisorRetornoStatus: 'Pendente' });
   };
