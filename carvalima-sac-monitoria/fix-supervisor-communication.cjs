@@ -8,15 +8,19 @@ if (text.includes('CARVALIMA_SUPERVISOR_COMMUNICATION_V1')) process.exit(0);
 
 const importMarker = "import SupervisorCommunicationView from './SupervisorCommunicationView';";
 if (!text.includes(importMarker)) {
-  text = text.replace(/(import[^\n]+;\n)/, `$1${importMarker}\n`);
+  const lastImport = [...text.matchAll(/^import .*;$/gm)].pop();
+  if (lastImport) text = text.slice(0, lastImport.index + lastImport[0].length) + `\n${importMarker}` + text.slice(lastImport.index + lastImport[0].length);
+  else text = `${importMarker}\n${text}`;
 }
 
-// Expose the communication area. GmailScriptSettingsView is already owned by
-// SupervisorCommunicationView, so the Gmail configuration is kept separate from Sheets.
+// The dedicated Gmail settings screen is rendered inside the communication area.
+// This keeps Google Sheets configuration independent from Gmail configuration.
 if (!text.includes("currentTab === 'comunicacao'")) {
-  const renderNeedle = "{currentTab === 'feedback'";
-  if (text.includes(renderNeedle)) {
-    text = text.replace(renderNeedle, "{currentTab === 'comunicacao' && <SupervisorCommunicationView monitorias={monitorias} supervisores={supervisores} onUpdateSupervisores={handleUpdateSupervisores} onUpdateMonitoria={handleUpdateMonitoria} darkMode={darkMode} showToast={showToast} />}\n      " + renderNeedle);
+  const candidates = ["{currentTab === 'feedback'", "{currentTab === 'dashboard'", "{currentTab === 'monitorias'"];
+  const needle = candidates.find((x) => text.includes(x));
+  if (needle) {
+    const view = `{currentTab === 'comunicacao' && <SupervisorCommunicationView monitorias={monitorias} supervisores={supervisores} onUpdateSupervisores={handleUpdateSupervisores} onUpdateMonitoria={handleUpdateMonitoria} darkMode={darkMode} showToast={showToast} />}`;
+    text = text.replace(needle, `${view}\n      ${needle}`);
   }
 }
 
