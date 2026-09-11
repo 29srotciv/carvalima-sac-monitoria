@@ -4,6 +4,16 @@ const oldKey = 'carvalima_qa_active_draft';
 const score = (responses, criteria) => criteria.length ? Number((Object.values(responses).filter(x => x?.atendeu === true).length / criteria.length * 10).toFixed(1)) : 0;
 const status = n => n >= 9 ? 'Conforme' : n >= 7 ? 'Em Atenção' : 'Crítico';
 const norm = (v = '') => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const nextMonitoriaId = (monitorias = []) => {
+  const year = String(new Date().getFullYear());
+  const pattern = new RegExp(`^${year}([1-9]\\d*)$`);
+  let maxSequence = 0;
+  monitorias.forEach(m => {
+    const match = String(m?.id || '').trim().match(pattern);
+    if (match) maxSequence = Math.max(maxSequence, Number(match[1]));
+  });
+  return `${year}${maxSequence + 1}`;
+};
 const extractSummaryCriteria = (text, criteria) => {
   const raw = String(text || '');
   if (!raw) return {};
@@ -79,7 +89,7 @@ export default function ModernNovaMonitoriaView({ unidades = [], monitorias = []
     const detalhes = {};
     const resumoCriterios = criterios.map(c => ({ id: c.id, titulo: c.titulo, desc: c.desc || '', atendeu: respostas[c.id]?.atendeu ?? null, evidencia: respostas[c.id]?.evidencia || '' }));
     criterios.forEach(c => { detalhes[c.id] = { ...(respostas[c.id] || {}), titulo: c.titulo }; });
-    const final = { id: monitoriaEdit?.id || `MON-${Date.now()}`, data: new Date().toLocaleDateString('pt-BR'), avaliador: 'Victor Silva - Analista SAC', agente: agente.trim().toUpperCase(), unidade: unidade === 'OUTRA' ? unidadeManual.toUpperCase() : unidade, departamento: departamento || departamentos[0], canal, protocolo, dataAtendimento: data, horario: hora, cliente, nota, status: situacao, detalhes, respostas, criterios, resumoCriterios, feedback, planoAcao, prazoPlano, statusPlano, feedbackSupervisor: monitoriaEdit?.feedbackSupervisor || '', statusFeedback: monitoriaEdit?.statusFeedback || 'Pendente', updated_at: new Date().toISOString(), rascunhoId: rascunhoEdit?.id || null };
+    const final = { id: monitoriaEdit?.id || nextMonitoriaId(monitorias), data: new Date().toLocaleDateString('pt-BR'), avaliador: 'Victor Silva - Analista SAC', agente: agente.trim().toUpperCase(), unidade: unidade === 'OUTRA' ? unidadeManual.toUpperCase() : unidade, departamento: departamento || departamentos[0], canal, protocolo, dataAtendimento: data, horario: hora, cliente, nota, status: situacao, detalhes, respostas, criterios, resumoCriterios, feedback, planoAcao, prazoPlano, statusPlano, feedbackSupervisor: monitoriaEdit?.feedbackSupervisor || '', statusFeedback: monitoriaEdit?.statusFeedback || 'Pendente', updated_at: new Date().toISOString(), rascunhoId: rascunhoEdit?.id || null };
     let arr = []; try { arr = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch {}
     localStorage.setItem(KEY, JSON.stringify((Array.isArray(arr) ? arr : []).filter(d => d.id !== id.current))); localStorage.removeItem(oldKey); onSave(final);
   };
