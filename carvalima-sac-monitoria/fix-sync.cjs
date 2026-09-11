@@ -9,8 +9,11 @@ const toast="        showToast(`Sincronização concluída! ${result.created || 
 if(s.includes(toast)&&!s.includes("Array.isArray(result.monitorias)")){
  s=s.replace(toast,[
  '        if (Array.isArray(result.monitorias)) {',
- "          await StorageService.saveAll('monitorias', result.monitorias);",
- "          setMonitorias([...result.monitorias].filter(m => !m.deleted).sort((a,b) => new Date(b.dataAtendimento || 0) - new Date(a.dataAtendimento || 0)));",
+ '          for (const remoteMonitoria of result.monitorias) {',
+ "            await StorageService.saveItem('monitorias', remoteMonitoria);",
+ '          }',
+ "          const atualizadas = await StorageService.get('monitorias');",
+ "          setMonitorias(atualizadas.filter(m => !m.deleted).sort((a,b) => new Date(b.dataAtendimento || 0) - new Date(a.dataAtendimento || 0)));",
  '        }',toast].join('\n'));
 }
 s += '\n/* '+MARK+' */\n';
