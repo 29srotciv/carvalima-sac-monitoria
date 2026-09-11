@@ -8,13 +8,13 @@ if (text.includes('CARVALIMA_SUPERVISOR_COMMUNICATION_V1')) process.exit(0);
 
 const importMarker = "import SupervisorCommunicationView from './SupervisorCommunicationView';";
 if (!text.includes(importMarker)) {
-  const lastImport = [...text.matchAll(/^import .*;$/gm)].pop();
+  const matches = [...text.matchAll(/^import .*;$/gm)];
+  const lastImport = matches[matches.length - 1];
   if (lastImport) text = text.slice(0, lastImport.index + lastImport[0].length) + `\n${importMarker}` + text.slice(lastImport.index + lastImport[0].length);
   else text = `${importMarker}\n${text}`;
 }
 
-// The dedicated Gmail settings screen is rendered inside the communication area.
-// This keeps Google Sheets configuration independent from Gmail configuration.
+// Inject the communication screen once, immediately before the existing dashboard/feedback views.
 if (!text.includes("currentTab === 'comunicacao'")) {
   const candidates = ["{currentTab === 'feedback'", "{currentTab === 'dashboard'", "{currentTab === 'monitorias'"];
   const needle = candidates.find((x) => text.includes(x));
