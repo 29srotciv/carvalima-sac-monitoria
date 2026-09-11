@@ -1,54 +1,45 @@
 const fs = require('fs');
 const path = require('path');
-const file = path.join(__dirname, 'src', 'App.jsx');
-let s = fs.readFileSync(file, 'utf8');
-const MARK = 'CARVALIMA_SUPERVISOR_COMMUNICATION_V1';
-if (s.includes(MARK)) { console.log('Comunicação com supervisores já aplicada.'); process.exit(0); }
 
-s = s.replace(
-  "import SupervisorFeedbackView from './SupervisorFeedbackView';",
-  "import SupervisorFeedbackView from './SupervisorFeedbackView';\nimport SupervisorCommunicationView from './SupervisorCommunicationView';\nimport SupervisorResponseView from './SupervisorResponseView';"
-);
+const appPath = path.join(__dirname, 'carvalima-sac-monitoria', 'src', 'App.jsx');
+let text = fs.readFileSync(appPath, 'utf8');
 
-s = s.replace(
-  "  const [colaboradores, setColaboradores] = useState([]);",
-  "  const [colaboradores, setColaboradores] = useState([]);\n  const [supervisores, setSupervisores] = useState([]);"
-);
+if (text.includes('CARVALIMA_SUPERVISOR_COMMUNICATION_V1')) process.exit(0);
 
-s = s.replace("const DB_VERSION = 12;", "const DB_VERSION = 13;");
-s = s.replace("if (!db.objectStoreNames.contains('colaboradores')) db.createObjectStore('colaboradores', { keyPath: 'id' });", "if (!db.objectStoreNames.contains('colaboradores')) db.createObjectStore('colaboradores', { keyPath: 'id' });\n        if (!db.objectStoreNames.contains('supervisores')) db.createObjectStore('supervisores', { keyPath: 'id' });");
+const importMarker = "import SupervisorCommunicationView from './SupervisorCommunicationView';";
+if (!text.includes(importMarker)) {
+  text = text.replace(/(import[^\n]+;\n)/, `$1${importMarker}\n`);
+}
 
-s = s.replace(
-  "      setColaboradores(colabs);",
-  "      setColaboradores(colabs);\n      const sups = await StorageService.get('supervisores');\n      setSupervisores(sups);"
-);
+// The communication view contains the Gmail settings tab itself. Keep the existing
+// Google Sheets settings untouched and expose Gmail as a first-class configuration tab.
+// This patch only adds the integration state/handlers and navigation; the view owns its UI.
 
-s = s.replace("  const handleSync = async () => {", "  const handleSync = async (silent = false) => {");
-s = s.replace("    showToast('Sincronizando com Google Sheets...', 'info');", "    if (!silent) showToast('Sincronizando com Google Sheets...', 'info');");
-s = s.replace(
-  "      const result = await response.json();\n      if (result.success) {",
-  "      const result = await response.json();\n      if (result.success) {\n        if (Array.isArray(result.monitorias)) {\n          await StorageService.saveAll('monitorias', result.monitorias);\n          setMonitorias(result.monitorias.sort((a,b) => new Date(b.dataAtendimento || 0) - new Date(a.dataAtendimento || 0)));\n        }"
-);
-s = s.replace("        showToast(`Sincronização concluída! ${result.created || 0} novas, ${result.updated || 0} atualizadas.`, 'success');", "        if (!silent) showToast(`Sincronização concluída! ${result.created || 0} novas, ${result.updated || 0} atualizadas.`, 'success');");
-s = s.replace("        showToast(`Erro na sincronização: ${result.error || 'Erro desconhecido'}`, 'error');", "        if (!silent) showToast(`Erro na sincronização: ${result.error || 'Erro desconhecido'}`, 'error');");
-s = s.replace("      showToast('Falha de conexão com o Google Sheets. Verifique a URL.', 'error');", "      if (!silent) showToast('Falha de conexão com o Google Sheets. Verifique a URL.', 'error');");
+if (!text.includes("gmailUrl")) {
+  text = text.replace(
+    "const [supervisores, setSupervisores] = useState([]);",
+    "const [supervisores, setSupervisores] = useState([]);\n  const [gmailConfigured, setGmailConfigured] = useState(false);"
+  );
+}
 
-s = s.replace(
-  "  const showToast = (message, type = 'success') => setToast({ message, type });",
-  "  useEffect(() => {\n    const timer = setInterval(() => {\n      const cfg = StorageService.getSettings();\n      if (cfg.gasUrl && cfg.gasToken) handleSync(true);\n    }, 300000);\n    return () => clearInterval(timer);\n  }, []);\n\n  const handleUpdateSupervisores = async (lista) => {\n    await StorageService.saveAll('supervisores', lista);\n    setSupervisores(lista);\n    const cfg = StorageService.getSettings();\n    if (cfg.gasUrl && cfg.gasToken) {\n      const ativos = lista.filter(s => s.ativo !== false);\n      for (const supervisor of ativos) {\n        try {\n          await fetch(cfg.gasUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'saveSupervisor', tokenSeguranca: cfg.gasToken, supervisor }) });\n        } catch (e) { console.warn('Supervisor salvo localmente; falha no espelho remoto.', e); }\n      }\n    }\n  };\n\n  const showToast = (message, type = 'success') => setToast({ message, type });"
-);
+// If the previous patch already injected communication state under a different shape,
+// do not duplicate it. The actual Gmail configuration is persisted by GmailScriptSettingsView.
 
-const gate = "  const publicSupervisorToken = new URLSearchParams(window.location.search).get('supervisor_token');\n  if (publicSupervisorToken) return <SupervisorResponseView />;\n\n";
-s = s.replace("  if (loading) return (", gate + "  if (loading) return (");
+const sidebarNeedle = "label: 'Supervisores & Retornos'";
+if (!text.includes(sidebarNeedle)) {
+  // Try common sidebar item arrays used by the app.
+  text = text.replace(
+    /(label:\s*['\"]Configurações['\"][^\n]*\n?[^}]*})/,
+    `$1,\n    { id: 'comunicacao', label: 'Supervisores & Retornos', icon: '✉' }`
+  );
+}
 
-const sidebarAnchor = '<SidebarButton active={currentTab === \'feedback\'} onClick={() => { setCurrentTab(\'feedback\'); setMonitoriaEditando(null); setRascunhoEditando(null); }} icon={<Icons.CheckSquare />} label="Feedback Supervisor" expanded={sidebarExpanded} />';
-const sidebarInsert = sidebarAnchor + "\n          <SidebarButton active={currentTab === 'comunicacao'} onClick={() => { setCurrentTab('comunicacao'); setMonitoriaEditando(null); setRascunhoEditando(null); }} icon={<Icons.CloudSync />} label=\"Supervisores & Retornos\" expanded={sidebarExpanded} />";
-if (s.includes(sidebarAnchor) && !s.includes('label="Supervisores & Retornos"')) s = s.replace(sidebarAnchor, sidebarInsert);
+if (!text.includes("currentTab === 'comunicacao'")) {
+  text = text.replace(
+    /(<[^>]*\bcurrentTab\b[^>]*\/>)/,
+    `$1\n      {currentTab === 'comunicacao' && <SupervisorCommunicationView monitorias={monitorias} supervisores={supervisores} onUpdateSupervisores={handleUpdateSupervisores} onUpdateMonitoria={handleUpdateMonitoria} darkMode={darkMode} showToast={showToast} />} `
+  );
+}
 
-const viewAnchor = "{currentTab === 'feedback' && <SupervisorFeedbackView monitorias={monitorias} darkMode={darkMode} onUpdateMonitoria={handleUpdateMonitoria} />}";
-const viewInsert = viewAnchor + "\n        {currentTab === 'comunicacao' && <SupervisorCommunicationView monitorias={monitorias} supervisores={supervisores} onUpdateSupervisores={handleUpdateSupervisores} onUpdateMonitoria={handleUpdateMonitoria} darkMode={darkMode} showToast={showToast} />}";
-if (s.includes(viewAnchor) && !s.includes("currentTab === 'comunicacao'")) s = s.replace(viewAnchor, viewInsert);
-
-s += `\n/* ${MARK} */\n`;
-fs.writeFileSync(file, s, 'utf8');
-console.log('Comunicação com supervisores aplicada.');
+text += "\n/* CARVALIMA_SUPERVISOR_COMMUNICATION_V1 */\n";
+fs.writeFileSync(appPath, text);
