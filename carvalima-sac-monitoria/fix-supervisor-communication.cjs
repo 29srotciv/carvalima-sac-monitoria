@@ -11,34 +11,13 @@ if (!text.includes(importMarker)) {
   text = text.replace(/(import[^\n]+;\n)/, `$1${importMarker}\n`);
 }
 
-// The communication view contains the Gmail settings tab itself. Keep the existing
-// Google Sheets settings untouched and expose Gmail as a first-class configuration tab.
-// This patch only adds the integration state/handlers and navigation; the view owns its UI.
-
-if (!text.includes("gmailUrl")) {
-  text = text.replace(
-    "const [supervisores, setSupervisores] = useState([]);",
-    "const [supervisores, setSupervisores] = useState([]);\n  const [gmailConfigured, setGmailConfigured] = useState(false);"
-  );
-}
-
-// If the previous patch already injected communication state under a different shape,
-// do not duplicate it. The actual Gmail configuration is persisted by GmailScriptSettingsView.
-
-const sidebarNeedle = "label: 'Supervisores & Retornos'";
-if (!text.includes(sidebarNeedle)) {
-  // Try common sidebar item arrays used by the app.
-  text = text.replace(
-    /(label:\s*['\"]Configurações['\"][^\n]*\n?[^}]*})/,
-    `$1,\n    { id: 'comunicacao', label: 'Supervisores & Retornos', icon: '✉' }`
-  );
-}
-
+// Expose the communication area. GmailScriptSettingsView is already owned by
+// SupervisorCommunicationView, so the Gmail configuration is kept separate from Sheets.
 if (!text.includes("currentTab === 'comunicacao'")) {
-  text = text.replace(
-    /(<[^>]*\bcurrentTab\b[^>]*\/>)/,
-    `$1\n      {currentTab === 'comunicacao' && <SupervisorCommunicationView monitorias={monitorias} supervisores={supervisores} onUpdateSupervisores={handleUpdateSupervisores} onUpdateMonitoria={handleUpdateMonitoria} darkMode={darkMode} showToast={showToast} />} `
-  );
+  const renderNeedle = "{currentTab === 'feedback'";
+  if (text.includes(renderNeedle)) {
+    text = text.replace(renderNeedle, "{currentTab === 'comunicacao' && <SupervisorCommunicationView monitorias={monitorias} supervisores={supervisores} onUpdateSupervisores={handleUpdateSupervisores} onUpdateMonitoria={handleUpdateMonitoria} darkMode={darkMode} showToast={showToast} />}\n      " + renderNeedle);
+  }
 }
 
 text += "\n/* CARVALIMA_SUPERVISOR_COMMUNICATION_V1 */\n";
