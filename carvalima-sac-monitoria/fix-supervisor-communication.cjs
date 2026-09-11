@@ -3,19 +3,21 @@ const path = require('path');
 
 const appPath = path.join(__dirname, 'src', 'App.jsx');
 let text = fs.readFileSync(appPath, 'utf8');
-const MARK = 'CARVALIMA_SUPERVISOR_COMMUNICATION_V2';
+const MARK = 'CARVALIMA_SUPERVISOR_COMMUNICATION_V3';
 if (text.includes(MARK)) process.exit(0);
 
 const importMarker = "import SupervisorCommunicationView from './SupervisorCommunicationView';";
 if (!text.includes(importMarker)) {
   text = text.replace("import React, { useState, useMemo, useEffect, useRef } from 'react';", "import React, { useState, useMemo, useEffect, useRef } from 'react';\n" + importMarker);
 }
+const responseImport = "import SupervisorResponseView from './SupervisorResponseView';";
+if (!text.includes(responseImport)) text = text.replace(importMarker, importMarker + "\n" + responseImport);
 
 if (!text.includes('const [supervisores, setSupervisores]')) {
   text = text.replace("  const [colaboradores, setColaboradores] = useState([]);", "  const [colaboradores, setColaboradores] = useState([]);\n  const [supervisores, setSupervisores] = useState([]);");
 }
 
-if (!text.includes("localStorage.getItem('carvalima_qa_supervisores')")) {
+if (!text.includes("carvalima_qa_supervisores")) {
   text = text.replace("      setColaboradores(colabs);", "      setColaboradores(colabs);\n      try {\n        const savedSup = JSON.parse(localStorage.getItem('carvalima_qa_supervisores') || '[]');\n        setSupervisores(Array.isArray(savedSup) ? savedSup : []);\n      } catch { setSupervisores([]); }");
 }
 
@@ -35,6 +37,12 @@ if (!text.includes('label="Supervisores & Retornos"')) {
   const anchor = "          <SidebarButton active={currentTab === 'configuracoes'";
   const item = "          <SidebarButton active={currentTab === 'comunicacao'} onClick={() => { setCurrentTab('comunicacao'); setMonitoriaEditando(null); }} icon={<Icons.CheckSquare />} label=\"Supervisores & Retornos\" expanded={sidebarExpanded} />\n";
   if (text.includes(anchor)) text = text.replace(anchor, item + anchor);
+}
+
+if (!text.includes("supervisor_token")) {
+  const anchor = "  if (loading) return (";
+  const gate = "  const publicSupervisorToken = new URLSearchParams(window.location.search).get('supervisor_token');\n  if (publicSupervisorToken) return <SupervisorResponseView />;\n\n";
+  if (text.includes(anchor)) text = text.replace(anchor, gate + anchor);
 }
 
 text += `\n/* ${MARK} */\n`;
