@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node fix-pdf.cjs && node fix-dashboard-export.cjs && node fix-action-plan.cjs && node fix-features.cjs && node fix-supervisor-reports.cjs && node fix-bulk-action-plan.cjs && node fix-supervisor-communication.cjs && node fix-gmail-settings.cjs && node fix-supervisor-pdf.cjs && node fix-monitoria-ids.cjs && node fix-quality-hardening.cjs && node fix-sync.cjs && node fix-ids-v2.cjs && node fix-boot.cjs && node fix-rhythm.cjs && node fix-token-compat.cjs && node fix-test-sheets-connection.cjs && node fix-rankings.cjs",
+    "prebuild": "node fix-pdf.cjs && node fix-dashboard-export.cjs && node fix-action-plan.cjs && node fix-features.cjs && node fix-supervisor-reports.cjs && node fix-bulk-action-plan.cjs && node fix-supervisor-communication.cjs && node fix-gmail-settings.cjs && node fix-supervisor-pdf.cjs && node fix-monitoria-ids.cjs && node fix-quality-hardening.cjs && node fix-sync.cjs && node fix-ids-v2.cjs && node fix-boot.cjs && node fix-rhythm.cjs && node fix-token-compat.cjs && node fix-test-sheets-connection.cjs && node fix-rankings.cjs && node fix-date-evolution.cjs && node fix-temporal-evolution.cjs",
     "build": "vite build",
     "preview": "vite preview"
   },
