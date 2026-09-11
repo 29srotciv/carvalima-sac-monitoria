@@ -46,7 +46,7 @@ export default function GmailScriptSettingsView({ darkMode = false, showToast })
       <section className={card}>
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white grid place-items-center text-xl">✉</div>
-          <div><h2 className="text-base font-black">Script Gmail</h2><p className="text-[10px] text-slate-400 mt-1">Integração exclusiva para enviar monitorias pelo Gmail e receber o retorno dos supervisores. Ela é independente da integração do Google Sheets.</p></div>
+          <div><h2 className="text-base font-black">Script Gmail</h2><p className="text-[10px] text-slate-400 mt-1">Integração exclusiva para enviar monitorias pelo Gmail e receber o retorno dos supervisores. Independente da integração do Google Sheets.</p></div>
         </div>
         <div className="mt-6 grid grid-cols-1 gap-4">
           <label className="block text-xs font-black">URL DO WEB APP GMAIL<input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/.../exec" className={`${input} mt-2`} /></label>
