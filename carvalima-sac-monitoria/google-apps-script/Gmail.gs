@@ -20,18 +20,22 @@ function json_(data) {
 }
 
 function doGet() {
-  return json_({ success: true, service: 'Carvalima Script Gmail', version: '1.0' });
+  try {
+    cfg_();
+    return json_({ success: true, service: 'Carvalima Script Gmail', version: '1.1' });
+  } catch (err) {
+    return json_({ success: false, error: err.message || String(err) });
+  }
 }
 
 function doPost(e) {
   try {
     var body = e && e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
     var action = body.action || '';
-
     if (action === 'getSupervisorRequest') return getSupervisorRequest_(body);
     if (action === 'submitSupervisorFeedback') return submitSupervisorFeedback_(body);
     if (action === 'sendSupervisorEmail') return sendSupervisorEmail_(body);
-
+    if (action === 'syncSupervisorReturns') return syncSupervisorReturns_(body);
     return json_({ success: false, error: 'Ação não reconhecida.' });
   } catch (err) {
     return json_({ success: false, error: err.message || String(err) });
@@ -109,13 +113,9 @@ function getSupervisorRequest_(body) {
   for (var i = values.length - 1; i >= 1; i--) {
     if (String(values[i][idx.responseToken] || '') === token) {
       return json_({ success: true, data: {
-        supervisorNome: values[i][idx.supervisorNome],
-        supervisorEmail: values[i][idx.supervisorEmail],
-        departamento: values[i][idx.departamento],
-        agente: values[i][idx.agente],
-        monitoriaId: values[i][idx.monitoriaId],
-        nota: values[i][idx.nota],
-        respondido: retornoExiste_(ss, token)
+        supervisorNome: values[i][idx.supervisorNome], supervisorEmail: values[i][idx.supervisorEmail],
+        departamento: values[i][idx.departamento], agente: values[i][idx.agente], monitoriaId: values[i][idx.monitoriaId],
+        nota: values[i][idx.nota], respondido: retornoExiste_(ss, token)
       }});
     }
   }
@@ -144,6 +144,28 @@ function submitSupervisorFeedback_(body) {
   var envRow = values.findIndex(function(row, n) { return n > 0 && String(row[idx.responseToken] || '') === token; });
   if (envRow > 0 && idx.statusRetorno != null) envios.getRange(envRow + 1, idx.statusRetorno + 1).setValue('Respondido');
   return json_({ success: true });
+}
+
+function syncSupervisorReturns_(body) {
+  var cfg = authorized_(body);
+  var ss = SpreadsheetApp.openById(cfg.spreadsheetId);
+  var sh = ss.getSheetByName('CARVALIMA_GMAIL_RETORNOS');
+  if (!sh || sh.getLastRow() < 2) return json_({ success: true, returns: [] });
+  var values = sh.getDataRange().getValues();
+  var headers = values[0], idx = {}; headers.forEach(function(h, i) { idx[h] = i; });
+  var returns = values.slice(1).map(function(row) {
+    return {
+      responseToken: String(row[idx.responseToken] || ''),
+      monitoriaId: String(row[idx.monitoriaId] || ''),
+      supervisorNome: String(row[idx.supervisorNome] || ''),
+      supervisorEmail: String(row[idx.supervisorEmail] || ''),
+      decisao: String(row[idx.decisao] || ''),
+      feedbackSupervisor: String(row[idx.feedbackSupervisor] || ''),
+      proximoPasso: String(row[idx.proximoPasso] || ''),
+      respondidoEm: row[idx.respondidoEm] ? new Date(row[idx.respondidoEm]).toISOString() : ''
+    };
+  }).filter(function(r) { return r.monitoriaId && r.responseToken; });
+  return json_({ success: true, returns: returns });
 }
 
 function retornoExiste_(ss, token) {
