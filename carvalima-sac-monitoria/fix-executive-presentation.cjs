@@ -1,0 +1,14 @@
+const fs=require('fs');
+const path=require('path');
+const file=path.join(process.cwd(),'src','ModernDashboard.jsx');
+let s=fs.readFileSync(file,'utf8');
+const marker='CARVALIMA_EXECUTIVE_PRESENTATION_V1';
+if(s.includes(marker))process.exit(0);
+s=s.replace("import React, { useMemo, useState } from 'react';","import React, { useMemo, useState } from 'react';\nimport ExecutivePresentationView from './ExecutivePresentationView';");
+s=s.replace("const [filtersOpen, setFiltersOpen] = useState(false);","const [filtersOpen, setFiltersOpen] = useState(false); const [presentationOpen, setPresentationOpen] = useState(false);");
+s=s.replace('<button onClick={onNewMonitoria}','<button onClick={() => setPresentationOpen(true)} className="px-5 py-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 text-blue-600 text-xs font-black shadow-sm">Relatório executivo</button><button onClick={onNewMonitoria}');
+const i=s.lastIndexOf('</div>;');
+if(i<0)throw new Error('ModernDashboard final não encontrado');
+s=s.slice(0,i+6)+marker+'{presentationOpen && <ExecutivePresentationView monitorias={filtered} darkMode={darkMode} onClose={() => setPresentationOpen(false)} />}'+s.slice(i+6);
+fs.writeFileSync(file,s);
+console.log('Injected '+marker);
