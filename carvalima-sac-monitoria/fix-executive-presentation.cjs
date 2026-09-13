@@ -9,6 +9,6 @@ s=s.replace("const [filtersOpen, setFiltersOpen] = useState(false);","const [fil
 s=s.replace('<button onClick={onNewMonitoria}','<button onClick={() => setPresentationOpen(true)} className="px-5 py-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 text-blue-600 text-xs font-black shadow-sm">Relatório executivo</button><button onClick={onNewMonitoria}');
 const i=s.lastIndexOf('</div>;');
 if(i<0)throw new Error('ModernDashboard final não encontrado');
-s=s.slice(0,i+6)+marker+'{presentationOpen && <ExecutivePresentationView monitorias={filtered} darkMode={darkMode} onClose={() => setPresentationOpen(false)} />}'+s.slice(i+6);
+s=s.slice(0,i)+marker+'{presentationOpen && <ExecutivePresentationView monitorias={filtered} darkMode={darkMode} onClose={() => setPresentationOpen(false)} />}'+s.slice(i);
 fs.writeFileSync(file,s);
 console.log('Injected '+marker);
